@@ -1,18 +1,12 @@
 var casper = require('casper').create();
 var url = casper.cli.args[0];
-var videoId = casper.cli.args[1];
-var commentsFolder = "./comments/";
 
 if(!url) {
-	casper.echo("ERROR! NO URL SPECIFIED!").exit(1);
+	casper.echo("No URL specified", "ERROR").exit(1);
 }
 
 casper.start(url, function() {
-    this.click("#yt-comments-order-button");
-    this.clickLabel("Newest first" , "li");
-    
     var self = this;
-    var count = 0;
     var cont = true;
 
     var expandReplies = function () {
@@ -23,10 +17,9 @@ casper.start(url, function() {
 			}
     	});
 		
-		var fs = require('fs');
-		var filename = (!videoId) ? "casperOut" : videoId
-		fs.write(commentsFolder + filename, self.getHTML('#yt-comments-list'), 'w');	
-    }
+		/* We're done. so output to stdout */
+		self.echo(self.getHTML('#yt-comments-list'));
+    };
 
     var loadComments = function() {
     	if(cont) {
@@ -38,8 +31,11 @@ casper.start(url, function() {
 				self.wait(3000, loadComments);
 			}
     	}
-    }
+    };
 	
+    this.click("#yt-comments-order-button");
+    this.clickLabel("Newest first" , "li");
+    
 	this.wait(3000, function() {
 		loadComments();	
 	});
