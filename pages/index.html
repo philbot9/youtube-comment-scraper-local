@@ -1,0 +1,70 @@
+<html>
+	<head>
+		<title>Youtube Commment Scraper</title>
+
+		<style>
+			body {
+				padding: 0px;
+				margin: 0px;
+			}
+			#header_div {
+				margin: 0px;
+				padding: 24% 0;
+				width: 100%;
+				background: #303030;
+				text-align: center;
+			}
+			#videoLink_div {
+			    margin: auto;
+			    
+			}
+			input.videoLink {
+				padding: 5px;
+				margin: 0px;
+				border: 2px solid #CCCCCC;
+				border-radius: 3px;
+				width: 400px;
+				height: 40px;
+				background-color: #EEEEEE;
+			}
+		</style>
+
+		<script>
+			window.onload = function() {
+					
+				document.getElementById("submitVideoLink").onclick = function(btn) {
+					document.getElementById("submitVideoLink").onclick = "";
+					var header = document.getElementById("header_div");
+					var padding = window.innerHeight / 2;
+
+					
+
+					var intervalId = setInterval(function() {
+						console.log("Padding: " + padding);
+						
+						if(padding < 20) {
+							return clearInterval(intervalId);
+						}
+						
+						padding -= 7;
+
+						header.style.padding = padding + "px 0";
+					},
+					2);
+				};
+
+			};
+		</script>
+
+	</head>
+
+	<body>
+		 <div id="header_div">
+		 	<div id="videoLink_div">
+		 		<input class="videoLink" type="text" placeholder="Enter video link...">
+		 		<button class="videoLink" id="submitVideoLink">Go</button>
+		 	</div>
+		 </div>
+	</body>
+
+</html>

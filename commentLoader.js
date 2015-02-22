@@ -21,7 +21,6 @@ var dataNotify = function(data, callback) {
 		if(comments[0].commentText == lastComment.commentText
 		&& comments[0].user == lastComment.user) {
 			comments.splice(0, 1);
-			console.log("HAD A DUPLICATE!");
 		}
 	}
 
@@ -54,6 +53,8 @@ module.exports.load = function (videoId, callback) {
     commentScraper.scrape(videoId, dataNotify, function(err) {
 		if(err) 
 			callback(err);
+		
+
 		callback();
 	});
 };
