@@ -16,13 +16,24 @@ var Database = function() {
 	if(!exists) {
 		console.log("Creating DB file.");		
 		fs.openSync(file, "w");
+		exists = true;
 	}
+	
 	this.queryCount = 0;
 	this.db = new sqlite3.Database(file);
 
-	this.db.serialize(function() {
-		if(!exists) {
-			self.db.run("CREATE TABLE comments ("
+	this.isBusy = function() {
+		return (self.queryCount > BUSY_THRESHOLD);
+	}
+
+	this.createTable = function(videoId, overwrite) {
+		var name = vidIdToTableName(videoId);
+
+		self.db.serialize(function() {
+			if(overwrite)
+				self.db.run("DROP TABLE IF EXISTS '" + name + "';");
+
+			self.db.run("CREATE TABLE '" + name + "' ("
 				+ "id INTEGER PRIMARY KEY, "
 				+ "user TEXT, "
 				+ "date TEXT, "
@@ -32,60 +43,56 @@ var Database = function() {
 				+ "numReplies INTEGER, "
 				+ "commentText TEXT)");
 			exists = true;
-		}
-	});
+		});
 
-	this.isBusy = function() {
-		return (self.queryCount > BUSY_THRESHOLD);
+		return true;
 	}
 
-	this.addComment = function(comment) {
+	this.addComments = function(comments, videoId) {
+		var table = vidIdToTableName(videoId);
+		
 		self.db.serialize(function() {
-	        var stmt = self.db.prepare("INSERT INTO comments VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); 
+			self.db.run("begin transaction");
 
-	        self.queryCount++;
-	        
-	        stmt.run([
-	            parseInt(comment.id),
-	            comment.user,
-	            comment.date,
-	            comment.dateYT,
-	            parseInt(comment.likes),
-	            parseInt(comment.replyTo),
-	            parseInt(comment.numReplies),
-	            comment.commentText],
-			function(err) {
-				if(err) {
-					return console.error("Database Error: " + err);
-				}
+			var stmt = self.db.prepare("INSERT INTO '" + table + "' VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); 
+	
+			for(var i = 0; i < comments.length; i++) {
+				var comment = comments[i];
+				stmt.run([
+		            parseInt(comment.id),
+		            comment.user,
+		            comment.date,
+		            comment.dateYT,
+		            parseInt(comment.likes),
+		            parseInt(comment.replyTo),
+		            parseInt(comment.numReplies),
+		            comment.commentText],
+				function(err) {
+					if(err) {
+						return console.error("Database Error: " + err);
+					}
 
-				if(--self.queryCount <= BUSY_THRESHOLD) {
-					self.emit('notBusy');
-				}
-				if(self.queryCount <= 0) {
-					self.emit('done');
-				}
-	        });
+					self.queryCount--;
 
-	        stmt.finalize();
-	    });
-	};
-
-	this.deleteDuplicates = function(callback) {
-		self.db.serialize(function() {
-			var stmt = self.db.prepare(
-				"DELETE FROM comments WHERE id IN "
-					+ "(SELECT id FROM comments d WHERE "
-						+ "1 < (SELECT count(*) FROM comments a WHERE "
-							+ "a.user = d.user AND a.commentText = d.commentText AND d.id >= a.id))"
-
-				);
-			stmt.run();
-			stmt.finalize();
+					if(self.queryCount <= BUSY_THRESHOLD) {
+						self.emit('notBusy');
+					}
+					if(self.queryCount <= 0) {
+						self.emit('done');
+						self.queryCount = 0;
+					}
+				});
+			}
+			
+			self.queryCount += comments.length;
+			self.db.run("commit transaction");
 		});
 	};
 }
 
+function vidIdToTableName(vidId) {
+	return vidId.replace(/[-]/g, "_");
+}
 
 util.inherits(Database, events.EventEmitter);
 

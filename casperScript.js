@@ -9,25 +9,12 @@ if(!videoId) {
 }
 
 var commentsUrl = "https://www.youtube.com/all_comments?v=" + videoId;
-var ajaxUrl = "https://www.youtube.com/comment_ajax?action_load_comments=1&order_by_time=True&filter=" 
-			+ videoId;
+var ajaxUrl = "https://www.youtube.com/comment_ajax?action_load_comments=1&order_by_time=True"
+		+ "&filter=" + videoId;
 
 casper.start(commentsUrl, function() {
     var self = this;
 
-    var sendRequest = function(url, params) {
-    	var resStr = self.evaluate(function(url, params) {
-			return __utils__.sendAJAX(url, "POST", params);
-    	}, url, params);
-
-    	try {
-    		return JSON.parse(cleanJSON(resStr.trim()));
-    	} catch(e) {
-    		//console.error(cleanJSON(resStr.trim()));
-    		console.error("Error parsing AJAX response: " + e);
-    		return null;
-    	}
-    };
 
     var cleanJSON = function(str) {
     	var re = /(\\[^"\/bfnrtu\\])/;
@@ -41,6 +28,20 @@ casper.start(commentsUrl, function() {
     			str = str.replace(re, "");
     	}
     	return str;
+    };
+
+    var sendRequest = function(url, params) {
+    	var resStr = self.evaluate(function(url, params) {
+			return __utils__.sendAJAX(url, "POST", params);
+    	}, url, params);
+
+    	try {
+    		return JSON.parse(cleanJSON(resStr.trim()));
+    	} catch(e) {
+    		//console.error(cleanJSON(resStr.trim()));
+    		console.error("Error parsing AJAX response: " + e);
+    		return null;
+    	}
     };
     
     /* get the session token */
@@ -66,8 +67,8 @@ casper.start(commentsUrl, function() {
 	system.stdout.flush();
 
 
-	/* Keep requesting the next commnet page as long as there is a page_token */
-	/* Once there is none we've reached the last page */
+	/* Keep requesting the next comment page as long as there is a page_token.
+	 * Once there is none we've reached the last page */
 	while(resp.page_token != "") {
 		system.stdout.flush();
 		system.stdin.flush();

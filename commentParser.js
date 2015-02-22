@@ -13,7 +13,7 @@ module.exports.parse = function(html, nextCommentID) {
     var threadParent;
     var nextID = nextCommentID || 0;
 
-    /* Select all comment items */
+    /* Select all comment items and iterate over them */
     $("div .comment-item").each(function(i, elem) {
         var comment = {
             id: nextID++,
@@ -60,10 +60,8 @@ module.exports.parse = function(html, nextCommentID) {
         comments.push(comment);
     });
 
-    console.log("Parsed " + comments.length + " comments.");
-
     if(comments.length == 0) {
-    	console.log(html);
+    	console.error("Error parsing comments!");
     }
 
     return comments;

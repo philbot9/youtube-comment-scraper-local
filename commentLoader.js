@@ -2,45 +2,58 @@ var commentScraper = require("./commentScraper.js");
 var commentParser = require("./commentParser.js");
 var db = require("./database.js");
 
-var lastCommentId = 0;
+var lastComment;
+var vidID;
+var totalComments = 0;
 
 var dataNotify = function(data, callback) {
 	if(!data)
 		return;
 
-	var comments = commentParser.parse(data, ++lastCommentId);
+	var nextCommentId = lastComment ? (lastComment.id + 1) : 1;
 
-	if(comments)
-		lastCommentId = comments[comments.length-1].id;
+	var comments = commentParser.parse(data, nextCommentId);
+	
+	if(!comments.length)
+		callback();
 
-	for(var i = 0; i < comments.length; i++) {
-        db.addComment(comments[i]);
-    }
+	if(lastComment) {
+		if(comments[0].commentText == lastComment.commentText
+		&& comments[0].user == lastComment.user) {
+			comments.splice(0, 1);
+			console.log("HAD A DUPLICATE!");
+		}
+	}
 
-    /* if the database is still processing our queries we wait */
-    if(db.isBusy()) {
-        console.log("Waiting for Database ...");   
-        db.once('notBusy', function() {
-        	console.log("notBusy");
-        	callback();
-        });
-    }
-    else {
-    	callback();
-    }
+	db.addComments(comments, vidID);
+	lastComment = comments[comments.length-1];
+    	totalComments += comments.length;
+    	console.log("Comments scraped so far: " + totalComments);    
+
+	/* if the database is busy we wait */
+	if(db.isBusy()) {
+		console.log("Waiting for Database ...");   
+		db.once('notBusy', function() {
+			console.log("notBusy");
+			callback();
+		});
+	} else {
+		callback();
+	}
 }
 
 
 module.exports.load = function (videoId, callback) {
-	commentScraper.scrape(videoId, dataNotify, function(err) {
+    vidID = videoId;
+    
+    console.log("Creating new table");
+    if(!db.createTable(videoId, true)) {
+        return callback(new Error ("cannot initialize comment database"));
+    }
+
+    commentScraper.scrape(videoId, dataNotify, function(err) {
 		if(err) 
 			callback(err);
-		
-		console.log("Waiting for Database ...");   
-        db.once('done', function() {
-        	console.log("database is done");
-        	callback();
-        });
-
+		callback();
 	});
 };
