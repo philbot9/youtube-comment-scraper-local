@@ -1,10 +1,10 @@
-var url = process.argv[2];
+var commentLoader = require("./commentLoader.js");
 
-if(url) {
-	require("./phantom.js")(url, function(err, commentsHTML) {
+var videoID = process.argv[2];
+
+if(videoID) {
+	commentLoader.load(videoID, function(err) {
 		if(err)
-			return console.error(err);
-
-		console.log(commentsHTML);
+			console.error(err);
 	});
-}
+} 

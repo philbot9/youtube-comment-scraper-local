@@ -1,0 +1,15 @@
+{
+  "name": "Youtube-Comment-Scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Philip Klostermann",
+  "license": "GPLv2",
+  "dependencies": {
+    "cheerio": "^0.18.0",
+    "sqlite3": "^3.0.5"
+  }
+}

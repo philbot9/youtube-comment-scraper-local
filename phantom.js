@@ -1,21 +1,19 @@
 var spawn = require('child_process').spawn;
 
-module.exports = function(url, callback) {
+module.exports = function(videoID, callback) {
 	var html = "";
-	var casper = spawn("casperjs", ["casperScript.js", url]);
+	var casper = spawn("casperjs", ["casperScript.js", videoID]);
 
-	casper.stdout.on('data', function(data) {
-		html += data;
+	casper.stdout.on('data', function(data) {	
+		if(data.toString() != "\\\\END//\n") {
+			console.log(data.toString());
+			casper.stdin.write("GO\n");
+		}
 	});
 
-	casper.stderr.on('data', function(data) {
-		casper.kill('SIGTERM');
-		callback(new Error(stderr));
-	});
-	
 	casper.on('close', function(code, signal) {
-		if(code !== 0)
-			return callback("CasperJS error [" + err.code + "]: " + err);
+		/*if(code !== 0)
+			return callback("CasperJS error [" + code + "]: ");*/
 
 		callback(null, html);
 	})

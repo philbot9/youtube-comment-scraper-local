@@ -1,1 +1,4 @@
 *.html
+*.db
+*.old
+node_modules/
