@@ -1,5 +1,5 @@
 var casper = require('casper').create();
- var system = require('system');
+var system = require('system');
 
 var videoId = casper.cli.args[0];
 
@@ -38,7 +38,6 @@ casper.start(commentsUrl, function() {
     	try {
     		return JSON.parse(cleanJSON(resStr.trim()));
     	} catch(e) {
-    		//console.error(cleanJSON(resStr.trim()));
     		console.error("Error parsing AJAX response: " + e);
     		return null;
     	}

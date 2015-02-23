@@ -2,21 +2,20 @@
 	<head>
 		<title>Youtube Commment Scraper</title>
 
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
 		<style>
 			body {
 				padding: 0px;
 				margin: 0px;
+				background-color: #FEFEFE;
 			}
 			#header_div {
 				margin: 0px;
-				padding: 24% 0;
+				
 				width: 100%;
 				background: #303030;
 				text-align: center;
-			}
-			#videoLink_div {
-			    margin: auto;
-			    
 			}
 			input.videoLink {
 				padding: 5px;
@@ -27,33 +26,38 @@
 				height: 40px;
 				background-color: #EEEEEE;
 			}
+			button.videoLink {
+				padding: 7px;
+				width: 50px;
+			}
+
+			#content_div {
+				height: 100%;
+				display: none;
+				max-width: 1000px;
+				margin-left: auto;
+				margin-right: auto;
+				background-color: yellow;
+			}
 		</style>
 
 		<script>
-			window.onload = function() {
-					
-				document.getElementById("submitVideoLink").onclick = function(btn) {
-					document.getElementById("submitVideoLink").onclick = "";
-					var header = document.getElementById("header_div");
-					var padding = window.innerHeight / 2;
+			$( document ).ready( function() {
+				var padding = ($( document ).height() / 2) - 20;
 
-					
+				$("#header_div").css("padding-top", padding);
+				$("#header_div").css("padding-bottom", padding);
 
-					var intervalId = setInterval(function() {
-						console.log("Padding: " + padding);
-						
-						if(padding < 20) {
-							return clearInterval(intervalId);
-						}
-						
-						padding -= 7;
+				$("#submitVideoLink").click(function(btn) {
+					$("#header_div").animate({
+						paddingTop: "20",
+						paddingBottom: "20"
+					}, 500);
 
-						header.style.padding = padding + "px 0";
-					},
-					2);
-				};
+					$("#content_div").show();
+				});
 
-			};
+			});
 		</script>
 
 	</head>
@@ -64,6 +68,10 @@
 		 		<input class="videoLink" type="text" placeholder="Enter video link...">
 		 		<button class="videoLink" id="submitVideoLink">Go</button>
 		 	</div>
+		 </div>
+
+		 <div id="content_div">
+
 		 </div>
 	</body>
 
