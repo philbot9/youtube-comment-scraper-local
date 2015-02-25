@@ -16,31 +16,31 @@ casper.start(commentsUrl, function() {
     var self = this;
 
 
-    var cleanJSON = function(str) {
-    	var re = /(\\[^"\/bfnrtu\\])/;
-    	var re_g = /(\\[^"\/bfnrtu\\])/g;
-    	var m;
-    	
-    	while ((m = re.exec(str)) != null) {
-    		if(!re.test(m[0].toLowerCase()))
-    			str = str.replace(re, m[0].toLowerCase());
-    		else
-    			str = str.replace(re, "");
-    	}
-    	return str;
-    };
+	var cleanJSON = function(str) {
+		var re = /(\\[^"\/bfnrtu\\])/;
+		var re_g = /(\\[^"\/bfnrtu\\])/g;
+		var m;
+		
+		while ((m = re.exec(str)) != null) {
+			if(!re.test(m[0].toLowerCase()))
+				str = str.replace(re, m[0].toLowerCase());
+			else
+				str = str.replace(re, "");
+		}
+		return str;
+	};
 
     var sendRequest = function(url, params) {
     	var resStr = self.evaluate(function(url, params) {
 			return __utils__.sendAJAX(url, "POST", params);
     	}, url, params);
 
-    	try {
-    		return JSON.parse(cleanJSON(resStr.trim()));
-    	} catch(e) {
-    		console.error("Error parsing AJAX response: " + e);
-    		return null;
-    	}
+		try {
+			return JSON.parse(cleanJSON(resStr.trim()));
+		} catch(e) {
+			console.error("Error parsing AJAX response: " + e);
+			return null;
+		}
     };
     
     /* get the session token */

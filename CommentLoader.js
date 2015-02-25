@@ -1,6 +1,40 @@
-var commentScraper = require("./commentScraper.js");
-var commentParser = require("./commentParser.js");
+var CommentScraper = require("./CommentScraper.js");
+var CommentParser = require("./CommentParser.js");
 var db = require("./database.js");
+
+var CommentLoader = function(videoID, callback) {
+	var self = this;
+	this.videoID = videoID;
+	
+	this.commentScraper = new CommentScraper(videoID, function(error){
+		if(error) 
+			return callback(error);
+
+		self.commentParser = new CommentParser(self.commentScraper);
+		callback();
+	});
+
+	/* Initialize the database */
+	if(!db.createTable(videoId, true)) {
+		return callback(new Error ("cannot initialize comment database"));
+	}
+};
+
+CommentLoader.prototype.load = function(callback) {
+	var pageToken;
+
+	/* Request the next comment page as longs as there is a page token
+	 * If there is none we have reached the last page */
+	do {
+		commentScraper.getCommentPage(null, function(error, pageContent, nextPageToken) {
+			pageToken = nextPageToken;
+		}
+	} while(pageToken);
+}
+
+
+
+
 
 var lastComment;
 var vidID;
