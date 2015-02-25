@@ -2,9 +2,21 @@ var CommentScraper = require("./CommentScraper.js");
 var CommentParser = require("./CommentParser.js");
 var db = require("./database.js");
 
+
+
+/* TODO: I don't know what the fuck is going on, but the program stop loading comments
+ * at random points (crash?, timeout?, idk) Video id: tug71xZL7yc 
+ * The bug is probably in the CommentParser event 'done' not being triggered when reaching
+ * the end of a list.
+ */
+
+
+
+
 var CommentLoader = function(videoID, callback) {
 	var self = this;
 	this.videoID = videoID;
+	this.allComments = [];
 	
 	this.commentScraper = new CommentScraper(videoID, function(error){
 		if(error) 
@@ -15,89 +27,42 @@ var CommentLoader = function(videoID, callback) {
 	});
 
 	/* Initialize the database */
-	if(!db.createTable(videoId, true)) {
+	if(!db.createTable(videoID, true)) {
 		return callback(new Error ("cannot initialize comment database"));
 	}
 };
 
 CommentLoader.prototype.load = function(callback) {
-	var pageToken;
-
-	/* Request the next comment page as longs as there is a page token
-	 * If there is none we have reached the last page */
-	do {
-		commentScraper.getCommentPage(null, function(error, pageContent, nextPageToken) {
-			pageToken = nextPageToken;
-		}
-	} while(pageToken);
-}
-
-
-
-
-
-var lastComment;
-var vidID;
-var totalComments = 0;
-
-var dataNotify = function(data, callback) {
-	if(!data)
-		return;
-
-	var nextCommentId = lastComment ? (lastComment.id + 1) : 1;
-
-	var comments = commentParser.parse(data, nextCommentId);
+	var self = this;
 	
-	if(!comments.length)
-		callback();
+	var cb = function(error, pageContent, nextPageToken) {
+		if(error)
+			return callback(error);
 
-	if(lastComment) {
-		if(comments[0].commentText == lastComment.commentText
-		&& comments[0].user == lastComment.user) {
-			comments.splice(0, 1);
-		}
-	}
+		self.nextPageToken = nextPageToken;
 
-	db.addComments(comments, vidID);
-	lastComment = comments[comments.length-1];
-    	totalComments += comments.length;
-    	console.log("Comments scraped so far: " + totalComments);    
+		console.log("Parsing page");
+		self.commentParser.parseComments(pageContent, function(commentObjects) {
+			self.allComments.push.apply(self.allComments, commentObjects);
 
-	/* if the database is busy we wait */
-	if(db.isBusy()) {
-		console.log("Waiting for Database ...");   
-		db.once('notBusy', function() {
-			console.log("notBusy");
-			callback();
+			//console.log(commentObjects);
+
+			console.log("Total comments so far: " + self.allComments.length);
+
+			//console.log(self.nextPageToken);
+
+			if(self.nextPageToken) {
+				console.log("Requesting page");
+				self.commentScraper.getCommentPage(self.nextPageToken, cb);
+			} else {
+				console.log("DONE");
+				callback(self.allComments);
+			}
 		});
-	} else {
-		callback();
-	}
-}
+	};
 
-
-module.exports.load = function (videoId, callback) {
-    vidID = videoId;
-    
-    console.log("Creating new table");
-    if(!db.createTable(videoId, true)) {
-        return callback(new Error ("cannot initialize comment database"));
-    }
-
-    commentScraper.scrape(videoId, dataNotify, function(err) {
-		if(err) 
-			callback(err);
-		
-
-		callback();
-	});
+	console.log("Requesting page");
+	this.commentScraper.getCommentPage(null, cb);
 };
-
-
-var CommentLoader = {};
-
-CommentLoader.prototype.loadCommentPage = function (videoId, callback) {
-
-}
 
 module.exports = CommentLoader;

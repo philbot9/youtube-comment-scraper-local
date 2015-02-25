@@ -1,7 +1,7 @@
 {
   "name": "Youtube-Comment-Scraper",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "Scrape all Comments from a Youtube video.",
   "main": "index.js",
   "author": "Philip Klostermann",
   "license": "GPLv2",

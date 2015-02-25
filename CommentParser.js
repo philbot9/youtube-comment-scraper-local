@@ -3,7 +3,7 @@ var cheerio = require('cheerio');
 
 /* Constructor */
 var CommentParser = function(commentScraper) {
-	this.comments = [];
+	this.pageComments = []; /* TODO: using this array is weird */
 	this.nextCommentID = 0;
 	this.commentScraper = commentScraper;
 	this.ee = new EventEmitter();
@@ -16,8 +16,10 @@ CommentParser.prototype.parseComments = function(html, callback) {
 		return [];
 
 	var self = this;
-	this.ee.on('done', function() {
-		callback(self.comments);
+	
+	this.ee.once('done', function() {
+		callback(self.pageComments);
+		self.pageComments = [];
 	});
 
 	var $ = cheerio.load(html, {normalizeWhitespace: true});
@@ -29,14 +31,29 @@ CommentParser.prototype.parseComments = function(html, callback) {
 	this.loopComments(commentItems, 0);
 };
 
+/* TODO: should this be its own function? What about the pageComments array? */
 CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 	var self = this;
+
+	if(startIndex >= commentItems.length) {
+		self.ee.emit('done');
+		return false;
+	}
+
 	commentItems.eachC(startIndex, function(commentItem, index) {
 		/* if this comment is a reply to another comment ignore it*/
-		if(commentItem.attr("class").indexOf("reply") > -1)
+		if(commentItem.attr("class").indexOf("reply") > -1) {
+		
+			/* Critical if statement. If the last comment is a reply
+			 * we stll need to emit 'done' or the execution stops and
+			 * the program terminates*/
+			if(index + 1 >= commentItems.length) 
+				self.ee.emit('done');
+			
 			return true;
+		}
 
-		self.comments.push(
+		self.pageComments.push(
 			parseOneComment(commentItem, self.nextCommentID++, -1));
 
 		/* check whether this comment has replies */
@@ -49,30 +66,30 @@ CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 					nextElement = nextElement.next();
 				}
 			}
-			/* get the Youtube comment id */
+			/* find the Youtube comment id */
 			var ytCommentId = commentItem.attr('data-cid').toString();
-			var myCommentId = self.comments[self.comments.length-1].id;
+			var myCommentId = self.pageComments[self.pageComments.length-1].id;
 			
 			/* 
-			 * break out of this loop to get the comment replies asynchronously.
+			 * get out of this loop (return false) to get the comment replies asynchronously.
 			 * when done resume from index+1
 			 */
-			console.log("COMMENT HAS REPLY: " + ytCommentId);
-
-			self.getCommentReplies(ytCommentId, myCommentId, function(commentReplies) {
-				self.comments.push.apply(self.comments, commentReplies);
+			self.loadCommentReplies(ytCommentId, myCommentId, function(commentReplies) {
+				self.pageComments.push.apply(self.pageComments, commentReplies);
 				self.loopComments(commentItems, index+1);
 			});
 			return false;
 		}
 
-		if(index + 1 >= commentItems.length)
+		if(index + 1 >= commentItems.length) {
 			self.ee.emit('done');
+			return false;
+		}
 
 	});
 }
 
-CommentParser.prototype.getCommentReplies = function(ytCommentId, parentId, callback) {
+CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, callback) {
 	var self = this;
 	var replies = []
 
@@ -82,15 +99,17 @@ CommentParser.prototype.getCommentReplies = function(ytCommentId, parentId, call
 			return callback([]);
 		}
 
+		console.log("Parsing comment replies");
+
 		var $ = cheerio.load(html, {normalizeWhitespace: true});
 		var commentItems = new CommentItems($, $(".comment-item"));
 
-		commentItems.eachC(0, function(commentItem) {
-			replies.push(
-				parseOneComment(commentItem, self.nextCommentID++, parentId));
+		commentItems.eachC(0, function(commentItem, index) {
+			replies.push(parseOneComment(commentItem, self.nextCommentID++, parentId));
 		});
 
 		if(nextPageToken) {
+			console.log("got more replies");
 			self.commentScraper.getCommentReplies(ytCommentId, nextPageToken, cb);
 		}
 		else {
@@ -98,7 +117,8 @@ CommentParser.prototype.getCommentReplies = function(ytCommentId, parentId, call
 		}
 	};
 
-	this.commentScraper.getCommentReplies(ytCommentId, null, cb);
+	console.log("Requesting comment replies");
+	self.commentScraper.getCommentReplies(ytCommentId, null, cb);
 }
 
 var parseOneComment = function(commentItemElement, commentID, replyToID) {

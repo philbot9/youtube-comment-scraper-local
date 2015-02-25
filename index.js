@@ -1,20 +1,24 @@
-var CommentParser = require("./CommentParser.js");
+var CommentLoader = require("./CommentLoader.js");
+var videoID = process.argv[2];
 
-// var commentLoader = require("./commentLoader.js");
+if(!videoID) {
+	console.error("No Video ID!");
+	process.exit(1);
+}
 
-// var videoID = process.argv[2];
+var commentLoader = new CommentLoader(videoID, function(error) {
+	if(error) {
+		console.error(error);
+		process.exit(1);
+	}
 
-// if(!videoID) {
-// 	console.error("No Video ID!");
-// 	process.exit(1);
-// }
+	commentLoader.load(function(comments) {
+		console.log(comments);
+	});
+});
 
-// commentLoader.load(videoID, function(err) {
-// 	if(err)
-// 		console.error(err);
-// }); 
 
-var CommentScraper = require("./CommentScraper.js");
+/*var CommentScraper = require("./CommentScraper.js");
 
 var c = new CommentScraper("tug71xZL7yc", function(err) {
 	if(err)	
@@ -34,4 +38,4 @@ var c = new CommentScraper("tug71xZL7yc", function(err) {
 		})
 
 	});
-});
+});*/

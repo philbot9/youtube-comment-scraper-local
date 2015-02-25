@@ -38,7 +38,7 @@ CommentScraper.prototype.getCommentPage = function(pageToken, callback) {
 			return callback(new Error("No comments received from server. Status " + xhr.status));
 		}
 
-		var commentsPage;
+		var commentsPage = {};
 		try {
 			var commentPageStr = xhr.responseText.toString().trim();
 			commentsPage = JSON.parse(cleanJSON(commentPageStr));
