@@ -35,6 +35,7 @@ var Database = function() {
 
 			self.db.run("CREATE TABLE '" + name + "' ("
 				+ "id INTEGER PRIMARY KEY, "
+				+ "youtubeCommentID TEXT, "
 				+ "user TEXT, "
 				+ "date TEXT, "
 				+ "dateYT TEXT, "
@@ -54,12 +55,13 @@ var Database = function() {
 		self.db.serialize(function() {
 			self.db.run("begin transaction");
 
-			var stmt = self.db.prepare("INSERT INTO '" + table + "' VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); 
+			var stmt = self.db.prepare("INSERT INTO '" + table + "' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"); 
 	
 			for(var i = 0; i < comments.length; i++) {
 				var comment = comments[i];
 				stmt.run([
 		            parseInt(comment.id),
+		            comment.youtubeCommentID,
 		            comment.user,
 		            comment.date,
 		            comment.dateYT,

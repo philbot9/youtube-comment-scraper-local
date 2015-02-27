@@ -3,13 +3,13 @@ var cheerio = require('cheerio');
 
 /* Constructor */
 var CommentParser = function(commentScraper) {
-	this.pageComments = []; /* TODO: using this array is weird */
+	this.pageComments = [];
 	this.nextCommentID = 0;
 	this.commentScraper = commentScraper;
 	this.ee = new EventEmitter();
 }
 
-CommentParser.prototype.parseComments = function(html, callback) {
+CommentParser.prototype.parse = function(html, callback) {
 	if(!html)
 		return [];
 	if(!html.length)
@@ -18,7 +18,7 @@ CommentParser.prototype.parseComments = function(html, callback) {
 	var self = this;
 	
 	this.ee.once('done', function() {
-		callback(self.pageComments);
+		callback(null, self.pageComments);
 		self.pageComments = [];
 	});
 
@@ -45,7 +45,7 @@ CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 		if(commentItem.attr("class").indexOf("reply") > -1) {
 		
 			/* Critical if statement. If the last comment is a reply
-			 * we stll need to emit 'done' or the execution stops and
+			 * we still need to emit 'done' or the execution stops and
 			 * the program terminates*/
 			if(index + 1 >= commentItems.length) 
 				self.ee.emit('done');
@@ -99,7 +99,7 @@ CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, cal
 			return callback([]);
 		}
 
-		console.log("Parsing comment replies");
+		console.log("----Parsing comment replies");
 
 		var $ = cheerio.load(html, {normalizeWhitespace: true});
 		var commentItems = new CommentItems($, $(".comment-item"));
@@ -109,7 +109,7 @@ CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, cal
 		});
 
 		if(nextPageToken) {
-			console.log("got more replies");
+			console.log("get more replies");
 			self.commentScraper.getCommentReplies(ytCommentId, nextPageToken, cb);
 		}
 		else {
@@ -117,7 +117,7 @@ CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, cal
 		}
 	};
 
-	console.log("Requesting comment replies");
+	console.log("----Requesting comment replies");
 	self.commentScraper.getCommentReplies(ytCommentId, null, cb);
 }
 
@@ -129,6 +129,8 @@ var parseOneComment = function(commentItemElement, commentID, replyToID) {
 	};
 
 	/* Extract comment information */
+	comment.youtubeCommentID = commentItemElement
+					.attr('data-cid').toString();
 	comment.user = commentItemElement
 					.children(".content")
 					.children("div .comment-header")
@@ -152,7 +154,7 @@ var parseOneComment = function(commentItemElement, commentID, replyToID) {
 					.children(".content")
 					.children("div .comment-footer")
 					.children("div .comment-footer-actions")
-					.children(".like-count.on").last().text();
+					.children(".like-count.on").text();
 	comment.likes = parseInt(likes) - 1;
 
 	return comment;
@@ -173,35 +175,36 @@ CommentItems.prototype.eachC = function(startIndex, func) {
 };
 
 
+function convertYtDate(ytDate) {
+	var re = /(\d+)\s(\w+)\sago/;
+	var m = re.exec(ytDate);
+
+	if(m.length <= 1)
+		return null;
+
+	var num = parseInt(m[1]);
+	var type = m[2];
+
+	var date = new Date();
+
+	if(type === "minute" || type === "minutes") {
+		date.setMinutes(date.getMinutes() - num);
+	}
+	else if(type === "day" || type === "days") {
+		date.setDate(date.getDate() - num);
+	}
+	else if(type === "week" || type === "weeks") {
+		date.setDate(date.getDate() - (num * 7));
+	}
+	else if(type === "month" || type === "months") {
+		date.setMonth(date.getMonth() - num);
+	}  
+	else if(type === "year" || type === "years") {
+		date.setFullYear(date.getFullYear() - num);
+	}
+
+	return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
+}
+
 module.exports = CommentParser;
 
-function convertYtDate(ytDate) {
-    var re = /(\d+)\s(\w+)\sago/;
-    var m = re.exec(ytDate);
-
-    if(m.length <= 1)
-    	return null;
-
-    var num = parseInt(m[1]);
-    var type = m[2];
-
-    var date = new Date();
-
-    if(type === "minute" || type === "minutes") {
-        date.setMinutes(date.getMinutes() - num);
-    }
-    else if(type === "day" || type === "days") {
-        date.setDate(date.getDate() - num);
-    }
-    else if(type === "week" || type === "weeks") {
-        date.setDate(date.getDate() - (num * 7));
-    }
-    else if(type === "month" || type === "months") {
-        date.setMonth(date.getMonth() - num);
-    }  
-    else if(type === "year" || type === "years") {
-        date.setFullYear(date.getFullYear() - num);
-    }
-
-    return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
-}
