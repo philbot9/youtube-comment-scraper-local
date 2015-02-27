@@ -3,22 +3,22 @@ Youtube Comment Scraper
 A Youtube Comment Scraper written in NodeJS. Scrapes all comments from a Youtube video and stores them in an SQLite database. ***This is still a Work-In-Progress!***
 ###Installation
 ```
-> npm install
+$ npm install
 ```
 ###Usage
 ```
-> npm start '{video_id}'
+$ npm start '{video_id}'
 ```
 Where `video_id` is Youtube's own video ID. 
 
 Example: *youtube.com/watch?v=* ***5yB3n9fu-rM***
 
 ```
-> npm start '5yB3n9fu-rM'
+$ node index.js '5yB3n9fu-rM'
 ```
 
 ###Output
-A new table is created for each video in which all of its comments are stored. The comments are ordered chronologically by 'Newest First', except when they are replies to another comment. Replies are stored (themselves chronologically) immediately after the comment they apply to and are marked as such.
+The database is stored in 'comments.db' in the app's directory. A new table is created for each video in which all of its comments are stored. The comments are ordered chronologically by 'Newest First', except when they are replies to another comment. Replies are stored (themselves chronologically) immediately after the comment they apply to and are marked as such.
 #####Database Table layout
 ```
 |----+--------------------+------------+------------+-----------+---------+-----------+--------------+---------------|
