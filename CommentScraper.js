@@ -16,6 +16,9 @@ var CommentScraper = function(videoID, callback) {
 	});
 };
 
+/* retrieves all comments on the page specified by pageToken
+ * if no pageToken is given, it will get the comments from the first page.
+ * the callback passes the comments in an array and the token for the next consecutive page */
 CommentScraper.prototype.getCommentPage = function(pageToken, callback) {
 	var self = this;
 

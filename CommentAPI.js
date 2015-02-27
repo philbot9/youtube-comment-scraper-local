@@ -2,6 +2,15 @@ var xhrc = require("xmlhttprequest-cookie");
 var XMLHttpRequest = xhrc.XMLHttpRequest;
 var CookieJar = xhrc.CookieJar;
 
+/* 
+ * IMPORTANT:
+ * Youtube expects a session token AND a Cookie with each ajax request. The regular
+ * XMLHttpRequest does not send cookies, so I used the xmlhttprequest-cookie module.
+ * Not sure what exactly that Cookie contains and there is no authentication needed to 
+ * get it. It is just added to the repsonse when requesting the comment website 
+ * (YT_COMMENTS_URL).
+ */
+
 var YT_COMMENTS_URL   = "https://www.youtube.com/all_comments?v=";
 var YT_AJAX_URL       = "https://www.youtube.com/comment_ajax?action_load_comments=1&order_by_time=True&filter=";
 var YT_AJAX_REPLY_URL = "https://www.youtube.com/comment_ajax?action_load_replies=1&order_by_time=True&tab=inbox";
@@ -11,6 +20,7 @@ var CommentAPI = function(videoID, callback) {
 	this.videoID = videoID;
 	var self = this;
 
+	/* required to send ajax requests */
 	getSessionToken(videoID, function(error, sessionToken) {
 		if(error)
 			return callback(error);
@@ -46,10 +56,10 @@ CommentAPI.prototype.getCommentPage = function(pageToken, callback) {
 		}
 
 		var nextPageToken = commentsPage['page_token'];
-
 		callback(null, commentsPage.html, nextPageToken);
 	});
 };
+
 
 CommentAPI.prototype.getCommentReplies = function(commentID, pageToken, callback) {
 	if(!commentID) {
@@ -94,13 +104,14 @@ CommentAPI.prototype.getCommentReplies = function(commentID, pageToken, callback
  *
  ******************************************************/
 
+/* clear any invalid escape sequences in a JSON string */
 var cleanJSON = function(str) {
 	var re = /(\\[^"\/bfnrtu\\])/;
 	var re_g = /(\\[^"\/bfnrtu\\])/g;
 	var m;
 	
 	/* 
-	 * Sometimes we get '\U' which should be '\u'. So try to replace any invalid 
+	 * Sometimes Youtube uses '\U' which should be '\u'. So try to replace any invalid 
 	 * escape sequences with their lowercase versions first.
 	 */
 
@@ -114,6 +125,7 @@ var cleanJSON = function(str) {
 };
 
 
+/* Retrieve a new session token */
 var getSessionToken = function(videoID, callback) {
 	xhrGet(YT_COMMENTS_URL + videoID, function(xhr){
 		if(xhr.status != 200) {
@@ -136,7 +148,7 @@ var getSessionToken = function(videoID, callback) {
 	});
 };
 
-/* XHR GET requests */
+/* XMLHttpRequest - GET */
 var xhrGet = function (url, callback) {
 	var xhr = new XMLHttpRequest();
 	xhr.debug = false;
@@ -150,7 +162,7 @@ var xhrGet = function (url, callback) {
 	xhr.send();
 };
 
-/* XHR POST requests */
+/* XMLHttpRequest - POST */
 var xhrPost = function(url, params, callback) {
 	var xhr = new XMLHttpRequest();
 	xhr.debug = false;

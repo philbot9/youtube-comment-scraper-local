@@ -11,9 +11,9 @@ var CommentParser = function(commentScraper) {
 
 CommentParser.prototype.parse = function(html, callback) {
 	if(!html)
-		return [];
+		return callback(new Error("No comment code provided."));
 	if(!html.length)
-		return [];
+		return callback(new Error("No comment code provided."));
 
 	var self = this;
 	
@@ -27,12 +27,12 @@ CommentParser.prototype.parse = function(html, callback) {
 	/* Select all comment-item divs and create a new CommentItems object from them */
 	var commentItems = new CommentItems($, $("div .comment-item"));
 
-	/* start processing the html */
-	this.loopComments(commentItems, 0);
+	/* start processing the HTML */
+	this.processComments(commentItems, 0);
 };
 
 /* TODO: should this be its own function? What about the pageComments array? */
-CommentParser.prototype.loopComments = function(commentItems, startIndex) {
+CommentParser.prototype.processComments = function(commentItems, startIndex) {
 	var self = this;
 
 	if(startIndex >= commentItems.length) {
@@ -46,7 +46,7 @@ CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 		
 			/* Critical if statement. If the last comment is a reply
 			 * we still need to emit 'done' or the execution stops and
-			 * the program terminates*/
+			 * the program terminates */
 			if(index + 1 >= commentItems.length) 
 				self.ee.emit('done');
 			
@@ -55,6 +55,12 @@ CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 
 		self.pageComments.push(
 			parseOneComment(commentItem, self.nextCommentID++, -1));
+
+
+		/* If a comment has replies we have to request them from Youtube, since they are
+		 * hidden if there are many of them. So we stop processing these comments
+		 * load the replies, parse them, add them to the array and then resume processing
+		 * the comments */
 
 		/* check whether this comment has replies */
 		var nextElement = commentItem.next();
@@ -76,7 +82,7 @@ CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 			 */
 			self.loadCommentReplies(ytCommentId, myCommentId, function(commentReplies) {
 				self.pageComments.push.apply(self.pageComments, commentReplies);
-				self.loopComments(commentItems, index+1);
+				self.processComments(commentItems, index+1);
 			});
 			return false;
 		}
@@ -89,6 +95,8 @@ CommentParser.prototype.loopComments = function(commentItems, startIndex) {
 	});
 }
 
+/* Get all replies a particular comment has had and parse them.
+ * The callback passes the comments in an array. */
 CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, callback) {
 	var self = this;
 	var replies = []
@@ -100,7 +108,6 @@ CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, cal
 		}
 
 		console.log("----Parsing comment replies");
-
 		var $ = cheerio.load(html, {normalizeWhitespace: true});
 		var commentItems = new CommentItems($, $(".comment-item"));
 
@@ -109,7 +116,6 @@ CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, cal
 		});
 
 		if(nextPageToken) {
-			console.log("get more replies");
 			self.commentScraper.getCommentReplies(ytCommentId, nextPageToken, cb);
 		}
 		else {
