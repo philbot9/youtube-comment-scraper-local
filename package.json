@@ -1,6 +1,6 @@
 {
   "name": "Youtube-Comment-Scraper",
-  "version": "0.1",
+  "version": "0.0.1",
   "description": "Scrape all comments from a Youtube video.",
   "main": "index.js",
   "author": "Philip Klostermann <philip.klostermann@gmail.com>",
