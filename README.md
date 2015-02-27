@@ -7,7 +7,7 @@ $ npm install
 ```
 ###Usage
 ```
-$ npm start '{video_id}'
+$ node index.js '{video_id}'
 ```
 Where `video_id` is Youtube's own video ID. 
 
