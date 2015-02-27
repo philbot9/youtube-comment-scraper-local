@@ -1,10 +1,14 @@
 {
   "name": "Youtube-Comment-Scraper",
-  "version": "0.0.1",
-  "description": "Scrape all Comments from a Youtube video.",
+  "version": "0.1",
+  "description": "Scrape all comments from a Youtube video.",
   "main": "index.js",
-  "author": "Philip Klostermann",
-  "license": "GPLv2",
+  "author": "Philip Klostermann <philip.klostermann@gmail.com>",
+  "license": "GPL",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/philbot9/Youtube-Comment-Scraper"
+  },
   "dependencies": {
     "cheerio": "^0.18.0",
     "sqlite3": "^3.0.5",
