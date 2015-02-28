@@ -1,130 +1,85 @@
 var EventEmitter = require("events").EventEmitter;
 var cheerio = require('cheerio');
 
-/* Constructor */
-var CommentParser = function(commentScraper) {
-	this.pageComments = [];
-	this.nextCommentID = 0;
-	this.commentScraper = commentScraper;
-	this.ee = new EventEmitter();
-}
-
-CommentParser.prototype.parse = function(html, callback) {
+module.exports = function(html, commentAPI, nextCommentID, callback) {
 	if(!html)
 		return callback(new Error("No comment code provided."));
 	if(!html.length)
 		return callback(new Error("No comment code provided."));
 
-	var self = this;
+	var comments = [];
 	
-	this.ee.once('done', function() {
-		callback(null, self.pageComments);
-		self.pageComments = [];
-	});
-
 	var $ = cheerio.load(html, {normalizeWhitespace: true});
-
 	/* Select all comment-item divs and create a new CommentItems object from them */
 	var commentItems = new CommentItems($, $("div .comment-item"));
 
-	/* start processing the HTML */
-	this.processComments(commentItems, 0);
+	var ee = new EventEmitter();
+	ee.on('comment', function(commentItem) {
+		comments.push(
+			parseOneComment(commentItem, nextCommentID++, -1));
+	});
+
+	ee.on('replies', function(index, ytCommentId) {
+		var replies = [];
+		var cb = function(error, repliesHtml, nextPageToken) {
+			if(error) {
+				console.error("Error retrieving replies: " + error);
+				console.error(ytCommentId);
+				return loopCommentItems(commentItems, index+1, ee);
+			}
+
+			console.log("----Parsing comment replies");
+			var $ = cheerio.load(repliesHtml, {normalizeWhitespace: true});
+			var replyItems = new CommentItems($, $(".comment-item"));
+
+			parentCommentID = comments[comments.length-1].id;
+
+			replyItems.eachC(0, function(item, index) {
+				replies.push(
+					parseOneComment(item, nextCommentID++, parentCommentID));
+			});
+
+			if(nextPageToken) {
+				console.log("----Requesting MORE comment replies");
+				commentAPI.getCommentReplies(ytCommentId, null, cb);
+			} else {
+				comments.push.apply(comments, replies);
+				loopCommentItems(commentItems, index+1, ee);
+			}
+		};
+
+		console.log("----Requesting comment replies");
+		commentAPI.getCommentReplies(ytCommentId, null, cb);
+	});
+
+	ee.on('done', function() {
+		callback(null, comments);
+	});
+
+	loopCommentItems(commentItems, 0, ee);
 };
 
-/* TODO: should this be its own function? What about the pageComments array? */
-CommentParser.prototype.processComments = function(commentItems, startIndex) {
-	var self = this;
+var loopCommentItems = function(commentItems, startIndex, ee) {
+	/* commentItems.eachC returns true if it reached the end of the list and 
+	 * false if the iteration was interrupted */
+	var finished = commentItems.eachC(startIndex, function(commentItem, index) {
+		/* if this comment is a reply skip it */ 
+		if(commentItem.attr("class").indexOf("reply") > -1) 
+		 	return;
 
-	if(startIndex >= commentItems.length) {
-		self.ee.emit('done');
-		return false;
-	}
+		ee.emit('comment', commentItem);
 
-	commentItems.eachC(startIndex, function(commentItem, index) {
-		/* if this comment is a reply to another comment ignore it*/
-		if(commentItem.attr("class").indexOf("reply") > -1) {
-		
-			/* Critical if statement. If the last comment is a reply
-			 * we still need to emit 'done' or the execution stops and
-			 * the program terminates */
-			if(index + 1 >= commentItems.length) 
-				self.ee.emit('done');
-			
-			return true;
-		}
-
-		self.pageComments.push(
-			parseOneComment(commentItem, self.nextCommentID++, -1));
-
-
-		/* If a comment has replies we have to request them from Youtube, since they are
-		 * hidden if there are many of them. So we stop processing these comments
-		 * load the replies, parse them, add them to the array and then resume processing
-		 * the comments */
-
-		/* check whether this comment has replies */
-		var nextElement = commentItem.next();
-		if(nextElement.text().length > 1) {
-			/* If the replies are hidden there is another div between the comment-item 
-			 * and the comment replies. skip over it... */
-			if(nextElement.attr('class')) {
-				if(nextElement.attr('class').indexOf("comment-replies-header") > -1) {
-					nextElement = nextElement.next();
-				}
-			}
-			/* find the Youtube comment id */
+		/* Check whether this comment item has replies */
+		if(commentItem.next().text().length > 1) {
 			var ytCommentId = commentItem.attr('data-cid').toString();
-			var myCommentId = self.pageComments[self.pageComments.length-1].id;
-			
-			/* 
-			 * get out of this loop (return false) to get the comment replies asynchronously.
-			 * when done resume from index+1
-			 */
-			self.loadCommentReplies(ytCommentId, myCommentId, function(commentReplies) {
-				self.pageComments.push.apply(self.pageComments, commentReplies);
-				self.processComments(commentItems, index+1);
-			});
+
+			ee.emit('replies', index, ytCommentId);
 			return false;
 		}
-
-		if(index + 1 >= commentItems.length) {
-			self.ee.emit('done');
-			return false;
-		}
-
 	});
-}
 
-/* Get all replies a particular comment has had and parse them.
- * The callback passes the comments in an array. */
-CommentParser.prototype.loadCommentReplies = function(ytCommentId, parentId, callback) {
-	var self = this;
-	var replies = []
-
-	var cb = function(error, html, nextPageToken){
-		if(error) {
-			console.error("Error retrieving replies: " + error);
-			return callback([]);
-		}
-
-		console.log("----Parsing comment replies");
-		var $ = cheerio.load(html, {normalizeWhitespace: true});
-		var commentItems = new CommentItems($, $(".comment-item"));
-
-		commentItems.eachC(0, function(commentItem, index) {
-			replies.push(parseOneComment(commentItem, self.nextCommentID++, parentId));
-		});
-
-		if(nextPageToken) {
-			self.commentScraper.getCommentReplies(ytCommentId, nextPageToken, cb);
-		}
-		else {
-			callback(replies);
-		}
-	};
-
-	console.log("----Requesting comment replies");
-	self.commentScraper.getCommentReplies(ytCommentId, null, cb);
+	if(finished === true) 
+		ee.emit('done');
 }
 
 var parseOneComment = function(commentItemElement, commentID, replyToID) {
@@ -174,10 +129,14 @@ var CommentItems = function($, o) {
 		this[key] = o[key];
 };
 CommentItems.prototype.eachC = function(startIndex, func) {
+	if(startIndex < 0)
+		return;
+
 	for(var i = startIndex; i < this.length; i++) {
 		if(func(this.$(this[i]), i) === false) 
-			break;
+			return false;
 	}
+	return true;
 };
 
 
@@ -211,6 +170,3 @@ function convertYtDate(ytDate) {
 
 	return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate();
 }
-
-module.exports = CommentParser;
-

@@ -8,6 +8,7 @@ if(!videoID) {
 }
 
 var totalComments = 0;
+var allComments = [];
 
 /* Create a new table, overwrite if exists */
 db.createTable(videoID, true);
@@ -22,16 +23,21 @@ var commentScraper = new CommentScraper(videoID, function(error) {
 	this.prevComments = [];
 
 	var cb = function(error, commentsArr, nextPageToken) {
+		if(error) 
+			return console.error(error);
+		
 		deleteOverlap(self.prevComments, commentsArr);
 		db.addComments(commentsArr, videoID);
 		self.prevComments = commentsArr;
 
 		totalComments += commentsArr.length;
+		allComments.push.apply(allComments, commentsArr);
 		
 		if(nextPageToken) {
 			console.log("\nComments so far: " + totalComments + "\n");
 			commentScraper.getCommentPage(nextPageToken, cb);
 		} else {
+			//console.log(allComments);
 			console.log("\nScraped " + totalComments + " comments.");
 		}
 	};

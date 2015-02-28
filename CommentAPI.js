@@ -15,93 +15,126 @@ var YT_COMMENTS_URL   = "https://www.youtube.com/all_comments?v=";
 var YT_AJAX_URL       = "https://www.youtube.com/comment_ajax?action_load_comments=1&order_by_time=True&filter=";
 var YT_AJAX_REPLY_URL = "https://www.youtube.com/comment_ajax?action_load_replies=1&order_by_time=True&tab=inbox";
 
-/* Constructor */
-var CommentAPI = function(videoID, callback) {
-	this.videoID = videoID;
-	var self = this;
+module.exports = function(options) {
+	var videoID;
 
-	/* required to send ajax requests */
-	getSessionToken(videoID, function(error, sessionToken) {
-		if(error)
-			return callback(error);
-		
-		self.sessionToken = sessionToken;
-		callback();
-	});
-};
-
-CommentAPI.prototype.getCommentPage = function(pageToken, callback) {
-	var params = {};
-	params['session_token'] = this.sessionToken;
-
-	if(!pageToken) 
-		params['video_id'] = this.videoID; /* get the first comment page */
-	else
-		params['page_token'] = pageToken; /* get a specific comment page */
-
-	xhrPost(YT_AJAX_URL + this.videoID, params, function(xhr) {
-		if(xhr.status != 200) {
-			return callback(new Error("Requesting comment page failed. Status " + xhr.status));
-		}
-		if(!xhr.responseText) {
-			return callback(new Error("No comments received from server. Status " + xhr.status));
-		}
-
-		var commentsPage = {};
-		try {
-			var commentPageStr = xhr.responseText.toString().trim();
-			commentsPage = JSON.parse(cleanJSON(commentPageStr));
-		} catch(e) {
-			return callback(new Error("Error parsing Server response: " + e));
-		}
-
-		var nextPageToken = commentsPage['page_token'];
-		callback(null, commentsPage.html, nextPageToken);
-	});
-};
-
-
-CommentAPI.prototype.getCommentReplies = function(commentID, pageToken, callback) {
-	if(!commentID) {
-		callback(new Error("No comment ID specified. Cannot get replies."));
+	/* make sure no one's trying to screw with us... */
+	if(!options) 
+		return console.error("comment-api: No video ID specified.");
+	if(typeof options === 'object') {
+		if(!options.videoID)
+			return console.error("comment-api: No video ID specified.");
+		videoID = options.videoID;
+	} else if(typeof options === 'string') {
+		videoID = options;
+	} else {
+		return console.error("comment-api: No video ID specified.");
 	}
 
-	params = {};
-	params['session_token'] = this.sessionToken;
-	params['video_id'] = this.videoID;
-	params['comment_id'] = commentID;
+	return {
+		getCommentsPage: getCommentPage,
+		getCommentReplies:  getCommentReplies
+	};
 
-	if(pageToken)
-		params['page_token'] = pageToken;
+	function getCommentsPage(pageToken, callback) {
+		requestSessionToken(function(error, sessionToken) {
+			if(error)
+				return callback(error);
 
-	xhrPost(YT_AJAX_REPLY_URL, params, function(xhr){
-		if(xhr.status != 200) {
-			return callback(new Error("Requesting replies failed. Status " + xhr.status));
+			var params = {};
+			params['session_token'] = sessionToken;
+
+			if(!pageToken) 
+				params['video_id'] = videoID; /* get the first comment page */
+			else
+				params['page_token'] = pageToken; /* get a specific comment page */
+
+			xhrPost(YT_AJAX_URL + this.videoID, params, function(xhr) {
+				if(xhr.status != 200)
+					return callback(new Error("Requesting comment page failed. Status " + xhr.status));
+				if(!xhr.responseText)
+					return callback(new Error("No comments received from server. Status " + xhr.status));
+
+				var commentsPage = {};
+				try {
+					var commentPageStr = xhr.responseText.toString().trim();
+					commentsPage = JSON.parse(cleanJSON(commentPageStr));
+				} catch(e) {
+					return callback(new Error("Error parsing Server response: " + e));
+				}
+
+				var nextPageToken = commentsPage['page_token'];
+				callback(null, commentsPage.html, nextPageToken);
+			});
+		});
+	}
+
+	function getCommentReplies(commentID, pageToken, callback) {
+		if(!commentID) {
+			callback(new Error("No comment ID specified. Cannot get replies."));
 		}
-		if(!xhr.responseText) {
-			return callback(new Error("No replies received from server. Status " + xhr.status));
-		}
 
-		var repliesPage;
-		try {
-			var repliesPageStr = xhr.responseText.toString().trim();
-			repliesPage = JSON.parse(cleanJSON(repliesPageStr));
-		} catch(e) {
-			return callback(new Error("Error parsing Server response: " + e));
-		}
+		requestSessionToken(function(error, sessionToken) {
+			if(error)
+				return callback(error);
 
-		var nextPageToken = repliesPage['page_token'];
-		callback(null, repliesPage.html, nextPageToken);
-	});
-	
+			params = {};
+			params['session_token'] = sessionToken;
+			params['comment_id'] = commentID;
+
+			if(pageToken)
+				params['page_token'] = pageToken;
+
+			xhrPost(YT_AJAX_REPLY_URL, params, function(xhr){
+				if(xhr.status != 200)
+					return callback(new Error("Requesting replies failed. Status " + xhr.status));
+				if(!xhr.responseText)
+					return callback(new Error("No replies received from server. Status " + xhr.status));
+
+				var repliesPage;
+				var repliesPageStr = xhr.responseText.toString().trim();
+
+				try
+					repliesPage = JSON.parse(cleanJSON(repliesPageStr));
+				catch(e)
+					return callback(new Error("Error parsing Server response: " + e));
+				
+				var nextPageToken = repliesPage['page_token'];
+				callback(null, repliesPage.html, nextPageToken);
+			});
+		});
+	}
+
+	var sessionToken;
+
+	function requestSessionToken = function(callback) {
+		if(sessionToken)
+			callback(null, sessionToken);
+
+		xhrGet(YT_COMMENTS_URL + videoID, function(xhr){
+			if(xhr.status != 200) 
+				return callback(new Error("Unable to retrieve video page. Status " + xhr.status));
+			
+			
+			var re = /\'XSRF_TOKEN\'\s*\n*:\s*\n*"(.*)"/;
+			var m = re.exec(xhr.responseText.toString());
+
+			if(!m)
+				return callback(new Error("Unable to find session token"));
+			if(m.length <= 1)
+				return callback(new Error("Unable to find session token"));
+			if(CookieJar.cookieList.length == 0)
+				return callback(new Error("No cookie received"));
+
+			sessionToken = m[1];
+			callback(null, sessionToken);
+		});
+	}
 }
 
 
-
 /******************************************************
- *
  *   Helper Functions 
- *
  ******************************************************/
 
 /* clear any invalid escape sequences in a JSON string */
@@ -125,28 +158,6 @@ var cleanJSON = function(str) {
 };
 
 
-/* Retrieve a new session token */
-var getSessionToken = function(videoID, callback) {
-	xhrGet(YT_COMMENTS_URL + videoID, function(xhr){
-		if(xhr.status != 200) {
-			callback(new Error("Unable to retrieve video page. Status " + xhr.status));
-		}
-		
-		var re = /\'XSRF_TOKEN\'\s*\n*:\s*\n*"(.*)"/;
-		var m = re.exec(xhr.responseText.toString());
-
-		if(!m)
-			return callback(new Error("Unable to find session token"));
-
-		if(m.length <= 1)
-			return callback(new Error("Unable to find session token"));
-
-		if(CookieJar.cookieList.length == 0)
-			return callback(new Error("No cookie received"));
-
-		callback(null, m[1]);
-	});
-};
 
 /* XMLHttpRequest - GET */
 var xhrGet = function (url, callback) {
@@ -189,5 +200,3 @@ var xhrPost = function(url, params, callback) {
 
 	xhr.send(requestBody);
 };
-
-module.exports = CommentAPI;

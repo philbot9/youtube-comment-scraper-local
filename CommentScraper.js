@@ -1,17 +1,16 @@
 var CommentAPI = require('./CommentAPI.js');
-var CommentParser = require('./CommentParser.js');
+var parseComments = require('./CommentParser.js');
 
 /* Constrctor */
 var CommentScraper = function(videoID, callback) {
 	var self = this;
 	this.videoID = videoID;
 	this.commentCount = 0;
+	this.prevCommentID;
 	
 	this.commentAPI = new CommentAPI(videoID, function(error){
 		if(error) 
 			return callback(error);
-
-		self.commentParser = new CommentParser(self.commentAPI);
 		callback();
 	});
 };
@@ -31,10 +30,13 @@ CommentScraper.prototype.getCommentPage = function(pageToken, callback) {
 		self.callback = callback;
 
 		console.log("--Parsing Comment Page");
-		self.commentParser.parse(pageContent, function(error, commentsArr){
+		parseComments(pageContent, self.commentAPI, self.prevCommentID, function(error, commentsArr) {
 			if(error)
 				return self.callback(error);
 
+			if(commentsArr.length)
+				self.prevCommentID = commentsArr[commentsArr.length-1].id;
+			
 			self.callback(null, commentsArr, self.nextPageToken);
 		});
 	});
