@@ -4,7 +4,7 @@
   "description": "Scrape all comments from a Youtube video.",
   "main": "index.js",
   "author": "Philip Klostermann <philip.klostermann@gmail.com>",
-  "license": "GPL",
+  "license": "ISC",
   "repository": {
     "type": "git",
     "url": "https://github.com/philbot9/Youtube-Comment-Scraper"
