@@ -1,4 +1,4 @@
-var CommentScraper = require("./CommentScraper.js");
+var CommentScraper = require("./lib/comment-scraper.js");
 var db = require("./database.js");
 var videoID = process.argv[2];
 
@@ -13,37 +13,33 @@ var allComments = [];
 /* Create a new table, overwrite if exists */
 db.createTable(videoID, true);
 
-var commentScraper = new CommentScraper(videoID, function(error) {
-	if(error) {
+var commentScraper = new CommentScraper(videoID);
+
+var self = this;
+this.prevComments = [];
+
+var cb = function(error, commentsArr, nextPageToken) {
+	if(error)  {
 		console.error(error);
 		process.exit(1);
 	}
+	
+	deleteOverlap(self.prevComments, commentsArr);
+	db.addComments(commentsArr, videoID);
+	self.prevComments = commentsArr;
 
-	var self = this;
-	this.prevComments = [];
+	totalComments += commentsArr.length;
+	
+	if(nextPageToken) {
+		console.log("\nComments so far: " + totalComments + "\n");
+		commentScraper.getCommentsPage(nextPageToken, cb);
+	} else {
+		console.log("\nScraped " + totalComments + " comments.");
+	}
+};
 
-	var cb = function(error, commentsArr, nextPageToken) {
-		if(error) 
-			return console.error(error);
-		
-		deleteOverlap(self.prevComments, commentsArr);
-		db.addComments(commentsArr, videoID);
-		self.prevComments = commentsArr;
+commentScraper.getCommentsPage(null, cb);
 
-		totalComments += commentsArr.length;
-		allComments.push.apply(allComments, commentsArr);
-		
-		if(nextPageToken) {
-			console.log("\nComments so far: " + totalComments + "\n");
-			commentScraper.getCommentPage(nextPageToken, cb);
-		} else {
-			//console.log(allComments);
-			console.log("\nScraped " + totalComments + " comments.");
-		}
-	};
-
-	commentScraper.getCommentPage(null, cb);
-});
 
 /* Sometimes the last comment on one page is the same as the first comment on the
  * next page. It's definitely Youtube's fault!
