@@ -11,17 +11,21 @@ db.createTable(videoID, true);
 
 var scraper = require("youtube-comment-stream")(videoID);
 var totalComments = 0;
+var commentBuffer = [];
 
 console.log("Scraping comments");
 scraper.on('data', function(comment) {
-	db.addComments([comment], videoID);
+	commentBuffer.push(comment);
 	
 	if(++totalComments % 100 == 0) {
 		console.log("Scraped " + totalComments + " comments so far");
+		db.addComments(commentBuffer, videoID);
+		commentBuffer = [];
 	}
 });
 
 scraper.on('end', function() {
+	db.addComments(commentBuffer, videoID);
 	console.log("\nScraped " + totalComments + " comments total.");
 	console.log("Committing remaining comments to Database...");
 })
