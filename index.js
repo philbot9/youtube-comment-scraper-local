@@ -15,7 +15,7 @@ var commentBuffer = [];
 
 console.log("Scraping comments");
 scraper.on('data', function(comment) {
-	commentBuffer.push(comment);
+	commentBuffer.push(JSON.parse(comment));
 	
 	if(++totalComments % 100 == 0) {
 		console.log("Scraped " + totalComments + " comments so far");
