@@ -22,6 +22,10 @@ var commentScraper = new CommentScraper(videoID, function(error) {
 	this.prevComments = [];
 
 	var cb = function(error, commentsArr, nextPageToken) {
+		if (error) {
+			console.error(error);
+			process.exit(1);
+		}
 		deleteOverlap(self.prevComments, commentsArr);
 		db.addComments(commentsArr, videoID);
 		self.prevComments = commentsArr;
