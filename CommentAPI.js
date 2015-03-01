@@ -63,7 +63,7 @@ CommentAPI.prototype.getCommentPage = function(pageToken, callback) {
 
 CommentAPI.prototype.getCommentReplies = function(commentID, pageToken, callback) {
 	if(!commentID) {
-		callback(new Error("No comment ID specified. Cannot get replies."));
+		return callback(new Error("No comment ID specified. Cannot get replies."));
 	}
 
 	params = {};
