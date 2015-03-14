@@ -5,27 +5,31 @@ if(!videoID) {
 }
 
 
-var db = require("./lib/database.js");
+var db = require("./lib/database.js")();
 /* Create a new table, overwrite if exists */
-db.createTable(videoID, true);
+db.createCommentsTable(videoID, true);
+db.createRepliesTable(videoID, true);
 
-var scraper = require("youtube-comment-stream")(videoID);
+var commentStream = require("youtube-comment-stream")(videoID);
+var JSONStream = require('json-stream');
 var totalComments = 0;
 var commentBuffer = [];
 
-console.log("Scraping comments");
-scraper.on('data', function(comment) {
-	commentBuffer.push(JSON.parse(comment));
-	
-	if(++totalComments % 100 == 0) {
-		console.log("Scraped " + totalComments + " comments so far");
-		db.addComments(commentBuffer, videoID);
+var jsonStream = new JSONStream();
+
+jsonStream.on('data', function(comment) {
+	commentBuffer.push(comment);
+	if(++totalComments % 500 == 0) {
+		console.log("-- Scraped " + totalComments + " comments so far");
+		db.insertComments(commentBuffer, videoID);
 		commentBuffer = [];
 	}
 });
 
-scraper.on('end', function() {
-	db.addComments(commentBuffer, videoID);
+jsonStream.on('end', function() {
+	db.insertComments(commentBuffer, videoID);
 	console.log("\nScraped " + totalComments + " comments total.");
-	console.log("Committing remaining comments to Database...");
-})
+});
+
+console.log("Scraping comments");
+commentStream.pipe(jsonStream);

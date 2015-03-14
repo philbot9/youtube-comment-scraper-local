@@ -10,6 +10,7 @@
     "url": "https://github.com/philbot9/Youtube-Comment-Scraper"
   },
   "dependencies": {
+    "json-stream": "^1.0.0",
     "sqlite3": "^3.0.5",
     "youtube-comment-stream": "*"
   }
