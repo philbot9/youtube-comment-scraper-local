@@ -19,7 +19,10 @@ var jsonStream = new JSONStream();
 
 jsonStream.on('data', function(comment) {
 	commentBuffer.push(comment);
-	if(++totalComments % 500 == 0) {
+	//count the replies for the comment as well
+	totalComments += 1 + (comment.hasReplies ? comment.replies.length : 0);
+	
+	if(totalComments % 500 === 0) {
 		console.log("-- Scraped " + totalComments + " comments so far");
 		db.insertComments(commentBuffer, videoID);
 		commentBuffer = [];
